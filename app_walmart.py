@@ -313,9 +313,10 @@ def download(filename):
     )
 
 
-@app.route("/walmart/favicon.ico")
-def favicon():
-    return "", 204
+@app.route("/")
+def root():
+    from flask import redirect
+    return redirect("/walmart")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
