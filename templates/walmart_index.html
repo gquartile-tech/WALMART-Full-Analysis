@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walmart CoE Analysis</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fa;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #0071CE;
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
+    .badge {
+      background: #FFC220;
+      color: #0071CE;
+      font-size: 0.68rem;
+      font-weight: 800;
+      border-radius: 4px;
+      padding: 3px 8px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 16px 60px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0071CE;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed #b8cfe8;
+      border-radius: 10px;
+      padding: 34px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: #0071CE;
+      background: #f0f7ff;
+    }
+    .upload-zone svg { display: block; margin: 0 auto 10px; }
+    .upload-zone p   { color: #666; font-size: 0.88rem; }
+    .upload-zone .hint { font-size: 0.76rem; color: #aaa; margin-top: 4px; }
+    #file-input { display: none; }
+    #file-label  { margin-top: 10px; font-size: 0.84rem; color: #0071CE; font-weight: 600; min-height: 1.2em; }
+
+    /* ── Button ── */
+    .btn {
+      display: block;
+      width: 100%;
+      background: #0071CE;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 18px;
+      transition: background 0.18s;
+      letter-spacing: 0.01em;
+    }
+    .btn:hover:not(:disabled) { background: #005aa8; }
+    .btn:disabled             { background: #8bbde0; cursor: not-allowed; }
+
+    /* ── Status / spinner ── */
+    #status {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #555;
+      font-size: 0.9rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 22px; height: 22px;
+      border: 3px solid #dde8f5;
+      border-top-color: #0071CE;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    #results { display: none; }
+
+    .account-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 16px;
+    }
+
+    /* Pillar cards — 3-column grid */
+    .pillars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .pillar-card {
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+      border: 1px solid transparent;
+    }
+    .pillar-card .p-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 7px;
+      opacity: 0.75;
+    }
+    .pillar-card .p-grade  { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
+    .pillar-card .p-score  { font-size: 0.78rem; opacity: 0.65; margin-bottom: 8px; }
+    .pillar-card .p-counts { font-size: 0.75rem; }
+    .p-counts .fc { color: #c0392b; font-weight: 700; margin-right: 4px; }
+    .p-counts .pc { color: #d68910; font-weight: 700; margin-right: 4px; }
+    .p-counts .oc { color: #1e8449; font-weight: 700; }
+
+    /* Grade colour classes */
+    .g-green  { background: #eafaf1; border-color: #a9dfbf; }
+    .g-green .p-grade { color: #1e8449; }
+    .g-amber  { background: #fef9e7; border-color: #f9e79f; }
+    .g-amber .p-grade { color: #b7770d; }
+    .g-red    { background: #fdedec; border-color: #f5b7b1; }
+    .g-red .p-grade   { color: #c0392b; }
+    .g-grey   { background: #f4f6f7; border-color: #d5d8dc; }
+    .g-grey .p-grade  { color: #7f8c8d; }
+
+    /* Downloads */
+    .dl-section h3 {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #444;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .dl-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f0f7ff;
+      border: 1px solid #b8d4ef;
+      border-radius: 8px;
+      color: #0071CE;
+      text-decoration: none;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      transition: background 0.15s;
+    }
+    .dl-btn:hover { background: #dceefb; }
+    .dl-icon { font-size: 1rem; }
+
+    /* Error box */
+    .error-box {
+      background: #fdedec;
+      border: 1px solid #f5b7b1;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #922b21;
+      font-size: 0.83rem;
+      margin-top: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Walmart CoE Analysis</h1>
+  </div>
+  <span class="badge">Walmart Connect</span>
+</header>
+
+<main>
+  <!-- Upload card -->
+  <div class="card">
+    <h2>Upload Databricks Export</h2>
+
+    <div class="upload-zone" id="drop-zone"
+         onclick="document.getElementById('file-input').click()">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+           stroke="#0071CE" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 16 12 12 8 16"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+      </svg>
+      <p>Drop your Walmart Databricks export here, or click to browse</p>
+      <p class="hint">.xlsx or .xlsm — max 50 MB</p>
+      <div id="file-label"></div>
+    </div>
+
+    <input type="file" id="file-input" accept=".xlsx,.xlsm" />
+    <button class="btn" id="run-btn" onclick="runAnalysis()" disabled>
+      Run Walmart Analysis (Mastery → Framework → Health → Strategy)
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div id="status">
+    <span class="spinner"></span>
+    Running Mastery → Framework → Health → Strategy sequentially…
+  </div>
+
+  <!-- Results card -->
+  <div class="card" id="results">
+    <div class="account-title" id="account-title">Results</div>
+
+    <div class="pillars" id="pillars-grid"></div>
+
+    <div class="dl-section" id="dl-section" style="display:none">
+      <h3>Download outputs</h3>
+      <div id="dl-links"></div>
+    </div>
+
+    <div id="error-section"></div>
+  </div>
+</main>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const dropZone  = document.getElementById('drop-zone');
+  const fileLabel = document.getElementById('file-label');
+  const runBtn    = document.getElementById('run-btn');
+  let   selectedFile = null;
+
+  fileInput.addEventListener('change', e => setFile(e.target.files[0]));
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  function setFile(f) {
+    if (!f) return;
+    selectedFile = f;
+    fileLabel.textContent = '📎 ' + f.name;
+    runBtn.disabled = false;
+  }
+
+  function gradeColour(grade) {
+    const g = (grade || '').toLowerCase();
+    if (g.includes('compliant') || g.includes('healthy'))  return 'g-green';
+    if (g.includes('attention') || g.includes('improvement')) return 'g-amber';
+    if (g.includes('risk') || g.includes('non-compliant') || g.includes('not compliant')) return 'g-red';
+    return 'g-grey';
+  }
+
+  const PILLAR_ORDER  = ['mastery', 'framework', 'health', 'strategy'];
+  const PILLAR_LABELS = { mastery: 'Mastery', framework: 'Framework', health: 'Health', strategy: 'Strategy' };
+
+  async function runAnalysis() {
+    if (!selectedFile) return;
+
+    runBtn.disabled = true;
+    document.getElementById('status').style.display  = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    try {
+      const resp = await fetch('/walmart/analyze', { method: 'POST', body: fd });
+      const data = await resp.json();
+
+      document.getElementById('status').style.display  = 'none';
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('account-title').textContent =
+        (data.account && data.account !== 'UNKNOWN_ACCOUNT')
+          ? data.account + ' — Walmart CoE Results'
+          : 'Walmart CoE Results';
+
+      // ── Pillar cards ──────────────────────────────────────────────
+      const grid = document.getElementById('pillars-grid');
+      grid.innerHTML = '';
+
+      for (const key of PILLAR_ORDER) {
+        const p  = (data.pillars || {})[key];
+        const gc = p ? gradeColour(p.grade) : 'g-grey';
+        const grade = p ? p.grade    : '—';
+        const score = p ? p.score    : '—';
+        const ok    = p ? p.ok      : '—';
+        const flag  = p ? p.flag    : '—';
+        const part  = p ? p.partial : '—';
+
+        grid.innerHTML += `
+          <div class="pillar-card ${gc}">
+            <div class="p-label">${PILLAR_LABELS[key]}</div>
+            <div class="p-grade">${grade}</div>
+            <div class="p-score">Score: ${score}</div>
+            <div class="p-counts">
+              <span class="fc">▲ ${flag} FLAG</span>
+              <span class="pc">◑ ${part} PARTIAL</span>
+              <span class="oc">✓ ${ok} OK</span>
+            </div>
+          </div>`;
+      }
+
+      // ── Download links ────────────────────────────────────────────
+      const dlSection = document.getElementById('dl-section');
+      const dlLinks   = document.getElementById('dl-links');
+      dlLinks.innerHTML = '';
+      let hasFiles = false;
+
+      for (const key of PILLAR_ORDER) {
+        const p = (data.pillars || {})[key];
+        if (p && p.filename) {
+          hasFiles = true;
+          const enc = encodeURIComponent(p.filename);
+          dlLinks.innerHTML += `
+            <a class="dl-btn" href="/walmart/download/${enc}" download>
+              <span class="dl-icon">⬇</span> ${p.filename}
+            </a>`;
+        }
+      }
+      dlSection.style.display = hasFiles ? 'block' : 'none';
+
+      // ── Errors ────────────────────────────────────────────────────
+      const errSection = document.getElementById('error-section');
+      errSection.innerHTML = '';
+      const errs = data.errors || {};
+      if (Object.keys(errs).length > 0) {
+        const msgs = Object.entries(errs)
+          .map(([k, v]) => `<b>${k}:</b> ${v.slice(0, 300)}`)
+          .join('\n\n');
+        errSection.innerHTML = `<div class="error-box">${msgs}</div>`;
+      }
+
+    } catch (err) {
+      document.getElementById('status').style.display  = 'none';
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('error-section').innerHTML =
+        `<div class="error-box">Request failed: ${err.message}</div>`;
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
