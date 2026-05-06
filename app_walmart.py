@@ -1,6 +1,6 @@
 """
 Walmart CoE Analysis Tool — Flask backend
-Runs Mastery → Framework → Health sequentially (avoids memory/lock issues).
+Single upload → 4 outputs: Mastery, Framework, Health, Strategy
 Route: /walmart  |  Port: set by Render via $PORT
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file, Response
+from flask import Flask, jsonify, render_template, request, Response
 from werkzeug.utils import secure_filename
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -54,8 +54,8 @@ def _run_mastery(input_path: str, safe_hash: str, ts: str) -> dict:
     if not TEMPLATE_MASTERY.exists():
         raise FileNotFoundError(f"Mastery template not found: {TEMPLATE_MASTERY}")
 
-    ctx      = load_walmart_context(input_path)
-    results  = evaluate_all(ctx)
+    ctx     = load_walmart_context(input_path)
+    results = evaluate_all(ctx)
     penalty, score, grade, findings = compute_score(results)
 
     fname = f"{safe_hash} - WM Mastery Analysis - {ts}.xlsm"
@@ -67,14 +67,12 @@ def _run_mastery(input_path: str, safe_hash: str, ts: str) -> dict:
         raise RuntimeError(f"Mastery output missing or too small ({size} bytes).")
 
     ret = {
-        'pillar':          'mastery',
-        'filename':        fname,
-        'grade':           grade,
-        'score':           round(score, 1),
-        'interpretation':  interpretation(grade),
-        'ok':      sum(1 for r in results.values() if r.status == 'OK'),
-        'flag':    sum(1 for r in results.values() if r.status == 'FLAG'),
-        'partial': sum(1 for r in results.values() if r.status == 'PARTIAL'),
+        'download_filename': fname,
+        'grade':  grade,
+        'score':  round(score, 1),
+        'ok':     sum(1 for r in results.values() if r.status == 'OK'),
+        'flag':   sum(1 for r in results.values() if r.status == 'FLAG'),
+        'partial':sum(1 for r in results.values() if r.status == 'PARTIAL'),
     }
     del ctx, results
     gc.collect()
@@ -89,8 +87,8 @@ def _run_framework(input_path: str, safe_hash: str, ts: str) -> dict:
     if not TEMPLATE_FRAMEWORK.exists():
         raise FileNotFoundError(f"Framework template not found: {TEMPLATE_FRAMEWORK}")
 
-    ctx      = load_walmart_context(input_path)
-    results  = evaluate_all(ctx)
+    ctx     = load_walmart_context(input_path)
+    results = evaluate_all(ctx)
     penalty, score, grade, findings = compute_score(results)
 
     fname = f"{safe_hash} - WM Framework Analysis - {ts}.xlsm"
@@ -102,14 +100,12 @@ def _run_framework(input_path: str, safe_hash: str, ts: str) -> dict:
         raise RuntimeError(f"Framework output missing or too small ({size} bytes).")
 
     ret = {
-        'pillar':          'framework',
-        'filename':        fname,
-        'grade':           grade,
-        'score':           round(score, 1),
-        'interpretation':  interpretation(grade),
-        'ok':      sum(1 for r in results.values() if r.status == 'OK'),
-        'flag':    sum(1 for r in results.values() if r.status == 'FLAG'),
-        'partial': sum(1 for r in results.values() if r.status == 'PARTIAL'),
+        'download_filename': fname,
+        'grade':  grade,
+        'score':  round(score, 1),
+        'ok':     sum(1 for r in results.values() if r.status == 'OK'),
+        'flag':   sum(1 for r in results.values() if r.status == 'FLAG'),
+        'partial':sum(1 for r in results.values() if r.status == 'PARTIAL'),
     }
     del ctx, results
     gc.collect()
@@ -124,8 +120,8 @@ def _run_health(input_path: str, safe_hash: str, ts: str) -> dict:
     if not TEMPLATE_HEALTH.exists():
         raise FileNotFoundError(f"Health template not found: {TEMPLATE_HEALTH}")
 
-    ctx      = load_walmart_context(input_path)
-    results  = evaluate_all(ctx)
+    ctx     = load_walmart_context(input_path)
+    results = evaluate_all(ctx)
     penalty, score, grade, findings = compute_score(results)
 
     fname = f"{safe_hash} - WM Health Analysis - {ts}.xlsm"
@@ -137,16 +133,12 @@ def _run_health(input_path: str, safe_hash: str, ts: str) -> dict:
         raise RuntimeError(f"Health output missing or too small ({size} bytes).")
 
     ret = {
-        'pillar':           'health',
-        'filename':         fname,
-        'grade':            grade,
-        'score':            round(score, 1),
-        'interpretation':   interpretation(grade),
-        'ok':      sum(1 for r in results.values() if r.status == 'OK'),
-        'flag':    sum(1 for r in results.values() if r.status == 'FLAG'),
-        'partial': sum(1 for r in results.values() if r.status == 'PARTIAL'),
-        'acos_constraint':  f"{ctx.proj_acos_target*100:.1f}%"  if ctx.proj_acos_target  else 'NOT FOUND',
-        'tacos_constraint': f"{ctx.proj_tacos_target*100:.1f}%" if ctx.proj_tacos_target else 'NOT FOUND',
+        'download_filename': fname,
+        'grade':  grade,
+        'score':  round(score, 1),
+        'ok':     sum(1 for r in results.values() if r.status == 'OK'),
+        'flag':   sum(1 for r in results.values() if r.status == 'FLAG'),
+        'partial':sum(1 for r in results.values() if r.status == 'PARTIAL'),
     }
     del ctx, results
     gc.collect()
@@ -155,12 +147,11 @@ def _run_health(input_path: str, safe_hash: str, ts: str) -> dict:
 
 def _run_strategy(input_path: str, safe_hash: str, ts: str) -> dict:
     from writer_walmart_strategy import write_walmart_strategy
+    import glob
 
     if not TEMPLATE_STRATEGY.exists():
         raise FileNotFoundError(f"Strategy template not found: {TEMPLATE_STRATEGY}")
 
-    fname = f"{safe_hash} - WM Strategy Analysis - {ts}.xlsm"
-    fpath = OUTPUT_DIR / fname
     write_walmart_strategy(
         export_path=input_path,
         template_path=str(TEMPLATE_STRATEGY),
@@ -168,12 +159,12 @@ def _run_strategy(input_path: str, safe_hash: str, ts: str) -> dict:
     )
 
     # writer_walmart_strategy saves with its own filename — find and rename
-    # to match the timestamped convention
-    import glob
     candidates = sorted(
         glob.glob(str(OUTPUT_DIR / "* — WM Strategy Analysis *.xlsm")),
         key=os.path.getmtime, reverse=True,
     )
+    fname = f"{safe_hash} - WM Strategy Analysis - {ts}.xlsm"
+    fpath = OUTPUT_DIR / fname
     if candidates:
         src = Path(candidates[0])
         if src != fpath:
@@ -183,22 +174,18 @@ def _run_strategy(input_path: str, safe_hash: str, ts: str) -> dict:
     if not fpath.exists() or size < MIN_OUTPUT_BYTES:
         raise RuntimeError(f"Strategy output missing or too small ({size} bytes).")
 
-    ret = {
-        'pillar':   'strategy',
-        'filename': fname,
-        'grade':    'Completed',
-        'score':    'N/A',
-        'interpretation': 'Strategy template populated from CSP, Gong, and Project data.',
+    gc.collect()
+    return {
+        'download_filename': fname,
+        'grade':  'Completed',
+        'score':  'N/A',
         'ok': 0, 'flag': 0, 'partial': 0,
     }
-    gc.collect()
-    return ret
 
 
 def run_full_analysis(input_path: str) -> dict:
-    """Run all three pillar agents sequentially — Mastery → Framework → Health."""
+    """Run all four pillar agents sequentially — Mastery → Framework → Health → Strategy."""
 
-    # Read account name from first successful context load
     from reader_databricks_walmart import load_walmart_context
     ctx       = load_walmart_context(input_path)
     hash_name = ctx.hash_name or "UNKNOWN_ACCOUNT"
@@ -206,50 +193,34 @@ def run_full_analysis(input_path: str) -> dict:
     del ctx
     gc.collect()
 
-    ts             = datetime.now().strftime("%Y%m%d_%H%M%S")
-    pillar_results = {}
-    errors         = {}
+    ts      = datetime.now().strftime("%Y%m%d_%H%M%S")
+    agents  = {}
+    errors  = {}
 
-    # ── 1. Mastery ─────────────────────────────────────────────────────────────
-    try:
-        pillar_results['mastery'] = _run_mastery(input_path, safe_hash, ts)
-        print(f"  [walmart] Mastery done — {pillar_results['mastery']['grade']}")
-    except Exception:
-        errors['mastery'] = traceback.format_exc()
-        print(f"  [walmart] Mastery FAILED:\n{errors['mastery'][:400]}")
+    for key, runner in [
+        ('mastery',   _run_mastery),
+        ('framework', _run_framework),
+        ('health',    _run_health),
+        ('strategy',  _run_strategy),
+    ]:
+        try:
+            agents[key] = {'status': 'ok', **runner(input_path, safe_hash, ts)}
+            print(f"  [walmart] {key} done — {agents[key].get('grade', '')}")
+        except Exception:
+            tb = traceback.format_exc()
+            agents[key] = {'status': 'error', 'error': tb}
+            print(f"  [walmart] {key} FAILED:\n{tb[:400]}")
 
-    # ── 2. Framework ───────────────────────────────────────────────────────────
-    try:
-        pillar_results['framework'] = _run_framework(input_path, safe_hash, ts)
-        print(f"  [walmart] Framework done — {pillar_results['framework']['grade']}")
-    except Exception:
-        errors['framework'] = traceback.format_exc()
-        print(f"  [walmart] Framework FAILED:\n{errors['framework'][:400]}")
-
-    # ── 3. Health ──────────────────────────────────────────────────────────────
-    try:
-        pillar_results['health'] = _run_health(input_path, safe_hash, ts)
-        print(f"  [walmart] Health done — {pillar_results['health']['grade']}")
-    except Exception:
-        errors['health'] = traceback.format_exc()
-        print(f"  [walmart] Health FAILED:\n{errors['health'][:400]}")
-
-    # ── 4. Strategy ────────────────────────────────────────────────────────────
-    try:
-        pillar_results['strategy'] = _run_strategy(input_path, safe_hash, ts)
-        print(f"  [walmart] Strategy done")
-    except Exception:
-        errors['strategy'] = traceback.format_exc()
-        print(f"  [walmart] Strategy FAILED:\n{errors['strategy'][:400]}")
-
-    return {
-        'pillars':  pillar_results,
-        'errors':   errors,
-        'account':  hash_name,
-    }
+    return {'agents': agents, 'account': hash_name}
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def root():
+    from flask import redirect
+    return redirect("/walmart")
+
 
 @app.route("/walmart")
 def index():
@@ -313,10 +284,10 @@ def download(filename):
     )
 
 
-@app.route("/")
-def root():
-    from flask import redirect
-    return redirect("/walmart")
+@app.route("/favicon.ico")
+@app.route("/walmart/favicon.ico")
+def favicon():
+    return "", 204
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -327,6 +298,7 @@ if __name__ == "__main__":
     print(f"  Mastery template  : {TEMPLATE_MASTERY} (exists: {TEMPLATE_MASTERY.exists()})")
     print(f"  Framework template: {TEMPLATE_FRAMEWORK} (exists: {TEMPLATE_FRAMEWORK.exists()})")
     print(f"  Health template   : {TEMPLATE_HEALTH} (exists: {TEMPLATE_HEALTH.exists()})")
+    print(f"  Strategy template : {TEMPLATE_STRATEGY} (exists: {TEMPLATE_STRATEGY.exists()})")
     print(f"  Outputs           : {OUTPUT_DIR}")
     print(f"  Open → http://127.0.0.1:{port}/walmart\n")
     app.run(host="0.0.0.0", port=port, debug=False)

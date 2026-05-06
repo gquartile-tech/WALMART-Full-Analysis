@@ -288,7 +288,7 @@ function renderSuccess(key, data) {
 
   if (data.grade) {
     html += '<div class="ar-grade">Grade: ' + data.grade;
-    if (data.score !== undefined) html += ' &nbsp;·&nbsp; Score: ' + data.score;
+    if (data.score !== undefined && data.score !== 'N/A') html += ' &nbsp;·&nbsp; Score: ' + data.score;
     html += '</div>';
   }
 
@@ -308,21 +308,7 @@ function renderError(key, msg) {
   document.getElementById('body-' + key).innerHTML = '<div class="ar-error">⚠ ' + msg + '</div>';
 }
 
-// ── Post one agent ────────────────────────────────────────────────────────────
-function postAgent(endpoint, key) {
-  setStatus(key, 'running', 'RUNNING');
-  var fd = new FormData();
-  fd.append('file', file);
-  return fetch(endpoint, { method: 'POST', body: fd })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if (data.error) renderError(key, data.error);
-      else            renderSuccess(key, data);
-    })
-    .catch(function(e){ renderError(key, e.message || 'Network error'); });
-}
-
-// ── Run all 4 sequentially ────────────────────────────────────────────────────
+// ── Run all 4 — single request ────────────────────────────────────────────────
 runB.addEventListener('click', async function() {
   if (!file) return;
   runB.disabled = true;
@@ -339,30 +325,45 @@ runB.addEventListener('click', async function() {
   document.getElementById('spin').style.display = '';
   document.getElementById('prog-lbl').textContent = 'PROCESSING — RUNNING WALMART AGENTS';
 
-  // Step 1 — reading file
   activateStep(0);
 
-  // Step 2 — Framework
-  activateStep(1);
-  await postAgent('/walmart/analyze/framework', 'framework');
+  var fd = new FormData();
+  fd.append('file', file);
 
-  // Step 3 — Health
-  activateStep(2);
-  await postAgent('/walmart/analyze/health', 'health');
+  // Animate steps while waiting (steps 1-4 auto-advance every ~8s)
+  var stepIdx = 1;
+  var stepTimer = setInterval(function(){
+    if (stepIdx < 5) { activateStep(stepIdx); stepIdx++; }
+    else clearInterval(stepTimer);
+  }, 8000);
 
-  // Step 4 — Mastery
-  activateStep(3);
-  await postAgent('/walmart/analyze/mastery', 'mastery');
+  try {
+    var resp = await fetch('/walmart/analyze', { method: 'POST', body: fd });
+    var data = await resp.json();
+    clearInterval(stepTimer);
 
-  // Step 5 — Strategy
-  activateStep(4);
-  await postAgent('/walmart/analyze/strategy', 'strategy');
+    if (data.error) {
+      errEl.textContent  = data.error;
+      errEl.style.display = 'block';
+    } else {
+      var agents = data.agents || {};
+      ['framework','health','mastery','strategy'].forEach(function(k){
+        var a = agents[k];
+        if (!a) return;
+        if (a.status === 'ok') renderSuccess(k, a);
+        else renderError(k, a.error || 'Unknown error');
+      });
+    }
+  } catch(e) {
+    clearInterval(stepTimer);
+    errEl.textContent  = 'Request failed: ' + e.message;
+    errEl.style.display = 'block';
+  }
 
-  // Step 6 — Done
-  activateStep(5);
   doneSteps();
   reset.style.display = 'block';
   res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  runB.disabled = false;
 });
 
 reset.addEventListener('click', function() {
