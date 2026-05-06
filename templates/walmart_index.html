@@ -1,385 +1,380 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Walmart CoE Analysis</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Walmart CoE Full Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0f1419; --card:#1a2330; --border:#243040;
+      --teal:#00e5b0; --teal-bg:rgba(0,229,176,.08); --teal-border:rgba(0,229,176,.25);
+      --text:#e8edf2; --muted:#5a7a8a; --label:#8faab8;
+      --ok:#00e5b0; --flag:#ff4d6d; --partial:#ffb347;
+      --ok-bg:rgba(0,229,176,.08); --flag-bg:rgba(255,77,109,.08); --err-bg:rgba(255,77,109,.07);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Inter',sans-serif;
+      background-color:var(--bg);
+      background-image:
+        linear-gradient(rgba(0,229,176,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,229,176,.025) 1px,transparent 1px);
+      background-size:32px 32px;
+      color:var(--text);min-height:100vh;
+    }
+    .page{max-width:740px;margin:0 auto;padding:52px 24px 100px;}
 
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #f4f6fa;
-      color: #1a1a2e;
-      min-height: 100vh;
-    }
+    .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--teal);border-radius:4px;padding:5px 14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--teal);margin-bottom:24px;}
+    .badge-dot{width:5px;height:5px;background:var(--teal);border-radius:50%;}
+    h1{font-size:34px;font-weight:700;line-height:1.2;letter-spacing:-.5px;margin-bottom:14px;}
+    h1 span{color:var(--teal);}
+    .tagline{font-size:14px;color:var(--label);line-height:1.7;margin-bottom:44px;}
 
-    /* ── Header ── */
-    header {
-      background: #0071CE;
-      color: #fff;
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
-    .badge {
-      background: #FFC220;
-      color: #0071CE;
-      font-size: 0.68rem;
-      font-weight: 800;
-      border-radius: 4px;
-      padding: 3px 8px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
+    /* ── Card ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+    .section{padding:26px 28px;border-bottom:1px solid var(--border);}
+    .section:last-child{border-bottom:none;}
+    .step-lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--teal);margin-bottom:8px;}
+    .step-title{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .step-title .fmt{font-size:12px;font-weight:400;color:var(--muted);font-family:'Space Mono',monospace;}
 
-    /* ── Layout ── */
-    main {
-      max-width: 680px;
-      margin: 40px auto;
-      padding: 0 16px 60px;
-    }
+    /* ── Dropzone ── */
+    .dropzone{border:2px dashed var(--border);border-radius:6px;padding:40px 20px;text-align:center;cursor:pointer;position:relative;transition:.2s;}
+    .dropzone:hover,.dropzone.over{border-color:var(--teal);background:rgba(0,229,176,.03);}
+    .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .dz-icon{font-size:38px;margin-bottom:12px;display:block;}
+    .dz-main{font-size:14px;font-weight:600;margin-bottom:4px;}
+    .dz-sub{font-size:12px;color:var(--muted);}
 
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
-      padding: 28px 32px;
-      margin-bottom: 20px;
-    }
-    .card h2 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #0071CE;
-      margin-bottom: 18px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    .filepill{display:none;margin-top:14px;background:rgba(0,229,176,.07);border:1px solid rgba(0,229,176,.3);border-radius:6px;padding:11px 14px;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);word-break:break-all;}
+    .filepill.show{display:flex;}
+    .filepill .x{margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
+    .filepill .x:hover{color:var(--flag);}
 
-    /* ── Upload zone ── */
-    .upload-zone {
-      border: 2px dashed #b8cfe8;
-      border-radius: 10px;
-      padding: 34px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: #0071CE;
-      background: #f0f7ff;
-    }
-    .upload-zone svg { display: block; margin: 0 auto 10px; }
-    .upload-zone p   { color: #666; font-size: 0.88rem; }
-    .upload-zone .hint { font-size: 0.76rem; color: #aaa; margin-top: 4px; }
-    #file-input { display: none; }
-    #file-label  { margin-top: 10px; font-size: 0.84rem; color: #0071CE; font-weight: 600; min-height: 1.2em; }
+    /* ── Agents grid ── */
+    .agents-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 0 4px;}
+    .agent-pill{display:flex;align-items:center;gap:9px;padding:10px 13px;background:rgba(0,229,176,.04);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--label);}
+    .agent-dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;}
+    .agent-name{font-weight:600;}
 
-    /* ── Button ── */
-    .btn {
-      display: block;
-      width: 100%;
-      background: #0071CE;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 0;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 18px;
-      transition: background 0.18s;
-      letter-spacing: 0.01em;
-    }
-    .btn:hover:not(:disabled) { background: #005aa8; }
-    .btn:disabled             { background: #8bbde0; cursor: not-allowed; }
+    /* ── Run button ── */
+    #run-btn{display:block;width:100%;padding:16px;background:var(--teal);color:#081a10;border:none;border-radius:6px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:.15s;margin-top:4px;}
+    #run-btn:hover:not(:disabled){background:#00ffc8;}
+    #run-btn:disabled{opacity:.3;cursor:not-allowed;}
 
-    /* ── Status / spinner ── */
-    #status {
-      display: none;
-      text-align: center;
-      padding: 20px;
-      color: #555;
-      font-size: 0.9rem;
-    }
-    .spinner {
-      display: inline-block;
-      width: 22px; height: 22px;
-      border: 3px solid #dde8f5;
-      border-top-color: #0071CE;
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-      vertical-align: middle;
-      margin-right: 8px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Progress ── */
+    #prog{display:none;margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+    .prog-head{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--teal);}
+    .spin{width:12px;height:12px;border:2px solid rgba(0,229,176,.2);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .prog-steps{padding:6px 0;}
+    .ps{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:12px;color:var(--muted);transition:.2s;}
+    .ps.active{color:var(--text);}
+    .ps.done{color:var(--teal);}
+    .ps-dot{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0;transition:.2s;}
+    .ps.active .ps-dot{background:var(--teal);box-shadow:0 0 6px var(--teal);}
+    .ps.done .ps-dot{background:var(--teal);}
+
+    /* ── Global error ── */
+    #err{display:none;margin-top:14px;padding:13px 16px;background:var(--err-bg);border:1px solid rgba(255,77,109,.2);border-radius:6px;font-size:12px;font-family:'Space Mono',monospace;color:#ff8fa3;white-space:pre-wrap;word-break:break-word;line-height:1.6;}
 
     /* ── Results ── */
-    #results { display: none; }
+    #results{display:none;margin-top:28px;}
+    .results-header{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--teal);margin-bottom:14px;}
 
-    .account-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #1a1a2e;
-      margin-bottom: 16px;
-    }
+    .agent-result{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;}
+    .ar-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);}
+    .ar-icon{font-size:16px;flex-shrink:0;}
+    .ar-label{font-size:13px;font-weight:700;flex:1;}
+    .ar-status{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 9px;border-radius:3px;font-weight:700;}
+    .ar-status.pending{background:rgba(90,122,138,.1);color:var(--muted);border:1px solid var(--border);}
+    .ar-status.running{background:rgba(0,229,176,.08);color:var(--teal);border:1px solid rgba(0,229,176,.2);}
+    .ar-status.ok{background:var(--ok-bg);color:var(--ok);border:1px solid rgba(0,229,176,.2);}
+    .ar-status.error{background:var(--flag-bg);color:var(--flag);border:1px solid rgba(255,77,109,.2);}
 
-    /* Pillar cards — 3-column grid */
-    .pillars {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .pillar-card {
-      border-radius: 10px;
-      padding: 16px 12px;
-      text-align: center;
-      border: 1px solid transparent;
-    }
-    .pillar-card .p-label {
-      font-size: 0.68rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 7px;
-      opacity: 0.75;
-    }
-    .pillar-card .p-grade  { font-size: 1rem; font-weight: 700; margin-bottom: 3px; }
-    .pillar-card .p-score  { font-size: 0.78rem; opacity: 0.65; margin-bottom: 8px; }
-    .pillar-card .p-counts { font-size: 0.75rem; }
-    .p-counts .fc { color: #c0392b; font-weight: 700; margin-right: 4px; }
-    .p-counts .pc { color: #d68910; font-weight: 700; margin-right: 4px; }
-    .p-counts .oc { color: #1e8449; font-weight: 700; }
+    .ar-body{padding:14px 18px;}
+    .ar-dl{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:transparent;border:1px solid var(--teal);border-radius:5px;color:var(--teal);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;font-weight:700;text-decoration:none;transition:.15s;margin-bottom:12px;}
+    .ar-dl:hover{background:var(--teal-bg);}
 
-    /* Grade colour classes */
-    .g-green  { background: #eafaf1; border-color: #a9dfbf; }
-    .g-green .p-grade { color: #1e8449; }
-    .g-amber  { background: #fef9e7; border-color: #f9e79f; }
-    .g-amber .p-grade { color: #b7770d; }
-    .g-red    { background: #fdedec; border-color: #f5b7b1; }
-    .g-red .p-grade   { color: #c0392b; }
-    .g-grey   { background: #f4f6f7; border-color: #d5d8dc; }
-    .g-grey .p-grade  { color: #7f8c8d; }
+    .ar-stats{display:flex;gap:14px;flex-wrap:wrap;}
+    .stat{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'Space Mono',monospace;}
+    .stat-dot{width:6px;height:6px;border-radius:50%;}
+    .stat-dot.ok{background:var(--ok);}
+    .stat-dot.flag{background:var(--flag);}
+    .stat-dot.partial{background:var(--partial);}
+    .stat-val{color:var(--text);}
+    .stat-lbl{color:var(--muted);}
 
-    /* Downloads */
-    .dl-section h3 {
-      font-size: 0.84rem;
-      font-weight: 700;
-      color: #444;
-      margin-bottom: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .dl-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #f0f7ff;
-      border: 1px solid #b8d4ef;
-      border-radius: 8px;
-      color: #0071CE;
-      text-decoration: none;
-      padding: 10px 14px;
-      font-size: 0.84rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-      transition: background 0.15s;
-    }
-    .dl-btn:hover { background: #dceefb; }
-    .dl-icon { font-size: 1rem; }
+    .ar-grade{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--teal);margin-bottom:12px;}
+    .ar-error{font-size:11px;font-family:'Space Mono',monospace;color:#ff8fa3;background:var(--err-bg);border:1px solid rgba(255,77,109,.15);border-radius:4px;padding:10px 12px;line-height:1.6;word-break:break-word;}
 
-    /* Error box */
-    .error-box {
-      background: #fdedec;
-      border: 1px solid #f5b7b1;
-      border-radius: 8px;
-      padding: 14px 16px;
-      color: #922b21;
-      font-size: 0.83rem;
-      margin-top: 14px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+    /* ── Reset ── */
+    #reset{display:none;margin-top:20px;background:none;border:none;color:var(--muted);font-size:12px;font-family:'Space Mono',monospace;cursor:pointer;letter-spacing:1px;}
+    #reset:hover{color:var(--teal);}
   </style>
 </head>
 <body>
+<div class="page">
 
-<header>
-  <div>
-    <h1>Walmart CoE Analysis</h1>
-  </div>
-  <span class="badge">Walmart Connect</span>
-</header>
+  <div class="badge"><span class="badge-dot"></span>COE · WALMART FULL ANALYSIS</div>
+  <h1>Walmart CoE <span>Analysis</span><br>Report Generator</h1>
+  <p class="tagline">
+    One Walmart Databricks export. Four analysis reports — Framework, Account Health, Account Mastery, and Strategy.<br>
+    Agents run sequentially. Each output is ready to download as it completes.
+  </p>
 
-<main>
-  <!-- Upload card -->
   <div class="card">
-    <h2>Upload Databricks Export</h2>
-
-    <div class="upload-zone" id="drop-zone"
-         onclick="document.getElementById('file-input').click()">
-      <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
-           stroke="#0071CE" stroke-width="1.5"
-           stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="16 16 12 12 8 16"/>
-        <line x1="12" y1="12" x2="12" y2="21"/>
-        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-      </svg>
-      <p>Drop your Walmart Databricks export here, or click to browse</p>
-      <p class="hint">.xlsx or .xlsm — max 50 MB</p>
-      <div id="file-label"></div>
+    <div class="section">
+      <div class="step-lbl">STEP 01 — UPLOAD</div>
+      <div class="step-title">Walmart Pre-Analysis Export <span class="fmt">.xlsx / .xlsm</span></div>
+      <div class="dropzone" id="dz">
+        <input type="file" id="fi" accept=".xlsx,.xlsm"/>
+        <span class="dz-icon">📁</span>
+        <div class="dz-main">Drop file here or click to browse</div>
+        <div class="dz-sub">Accepts .xlsx or .xlsm · max 50 MB</div>
+      </div>
+      <div class="filepill" id="pill">
+        <span>📄</span>
+        <span id="pill-name"></span>
+        <button class="x" id="pill-x">×</button>
+      </div>
     </div>
 
-    <input type="file" id="file-input" accept=".xlsx,.xlsm" />
-    <button class="btn" id="run-btn" onclick="runAnalysis()" disabled>
-      Run Walmart Analysis (Mastery → Framework → Health → Strategy)
-    </button>
+    <div class="section">
+      <div class="step-lbl">STEP 02 — AGENTS (SEQUENTIAL)</div>
+      <div class="step-title">Four Walmart analyses will run one after another</div>
+      <div class="agents-grid">
+        <div class="agent-pill"><span class="agent-dot"></span><span class="agent-name">WM Framework</span></div>
+        <div class="agent-pill"><span class="agent-dot"></span><span class="agent-name">Account Health</span></div>
+        <div class="agent-pill"><span class="agent-dot"></span><span class="agent-name">Account Mastery</span></div>
+        <div class="agent-pill"><span class="agent-dot"></span><span class="agent-name">Strategy Analysis</span></div>
+      </div>
+    </div>
   </div>
 
-  <!-- Progress -->
-  <div id="status">
-    <span class="spinner"></span>
-    Running Mastery → Framework → Health → Strategy sequentially…
+  <button id="run-btn" disabled>▶ &nbsp;RUN WALMART FULL ANALYSIS</button>
+
+  <div id="prog">
+    <div class="prog-head">
+      <span class="spin" id="spin"></span>
+      <span id="prog-lbl">PROCESSING — RUNNING WALMART AGENTS</span>
+    </div>
+    <div class="prog-steps">
+      <div class="ps" id="s1"><span class="ps-dot"></span>Reading Walmart export &amp; account header</div>
+      <div class="ps" id="s2"><span class="ps-dot"></span>Framework — evaluating campaign structure &amp; bidding controls</div>
+      <div class="ps" id="s3"><span class="ps-dot"></span>Account Health — evaluating KPIs, marketplace &amp; trend controls</div>
+      <div class="ps" id="s4"><span class="ps-dot"></span>Account Mastery — scoring documentation &amp; CSM quality</div>
+      <div class="ps" id="s5"><span class="ps-dot"></span>Strategy — populating CSP, Gong &amp; item performance data</div>
+      <div class="ps" id="s6"><span class="ps-dot"></span>Finalising all four output files</div>
+    </div>
   </div>
 
-  <!-- Results card -->
-  <div class="card" id="results">
-    <div class="account-title" id="account-title">Results</div>
+  <div id="err"></div>
 
-    <div class="pillars" id="pillars-grid"></div>
+  <div id="results">
+    <div class="results-header">ANALYSIS COMPLETE — DOWNLOAD REPORTS BELOW</div>
 
-    <div class="dl-section" id="dl-section" style="display:none">
-      <h3>Download outputs</h3>
-      <div id="dl-links"></div>
+    <div class="agent-result" id="res-framework">
+      <div class="ar-head">
+        <span class="ar-icon">📋</span>
+        <span class="ar-label">Walmart Framework Analysis</span>
+        <span class="ar-status pending" id="st-framework">PENDING</span>
+      </div>
+      <div class="ar-body" id="body-framework"></div>
     </div>
 
-    <div id="error-section"></div>
+    <div class="agent-result" id="res-health">
+      <div class="ar-head">
+        <span class="ar-icon">🏥</span>
+        <span class="ar-label">Account Health Analysis</span>
+        <span class="ar-status pending" id="st-health">PENDING</span>
+      </div>
+      <div class="ar-body" id="body-health"></div>
+    </div>
+
+    <div class="agent-result" id="res-mastery">
+      <div class="ar-head">
+        <span class="ar-icon">🎯</span>
+        <span class="ar-label">Account Mastery Analysis</span>
+        <span class="ar-status pending" id="st-mastery">PENDING</span>
+      </div>
+      <div class="ar-body" id="body-mastery"></div>
+    </div>
+
+    <div class="agent-result" id="res-strategy">
+      <div class="ar-head">
+        <span class="ar-icon">📐</span>
+        <span class="ar-label">Account Strategy Analysis</span>
+        <span class="ar-status pending" id="st-strategy">PENDING</span>
+      </div>
+      <div class="ar-body" id="body-strategy"></div>
+    </div>
   </div>
-</main>
+
+  <button id="reset">← Analyse another account</button>
+
+</div>
 
 <script>
-  const fileInput = document.getElementById('file-input');
-  const dropZone  = document.getElementById('drop-zone');
-  const fileLabel = document.getElementById('file-label');
-  const runBtn    = document.getElementById('run-btn');
-  let   selectedFile = null;
+var file  = null;
+var fi    = document.getElementById('fi');
+var dz    = document.getElementById('dz');
+var pill  = document.getElementById('pill');
+var pillN = document.getElementById('pill-name');
+var pillX = document.getElementById('pill-x');
+var runB  = document.getElementById('run-btn');
+var prog  = document.getElementById('prog');
+var errEl = document.getElementById('err');
+var res   = document.getElementById('results');
+var reset = document.getElementById('reset');
 
-  fileInput.addEventListener('change', e => setFile(e.target.files[0]));
-  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    setFile(e.dataTransfer.files[0]);
+function checkReady() { runB.disabled = !file; }
+
+function pickFile(f) {
+  file = f;
+  pillN.textContent = f.name;
+  pill.classList.add('show');
+  errEl.style.display = 'none';
+  res.style.display   = 'none';
+  reset.style.display = 'none';
+  checkReady();
+}
+
+fi.addEventListener('change', function(){ if(fi.files[0]) pickFile(fi.files[0]); });
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault(); dz.classList.remove('over');
+  if(e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]);
+});
+pillX.addEventListener('click', function(){
+  file=null; fi.value='';
+  pill.classList.remove('show');
+  checkReady();
+});
+
+// ── Progress steps ────────────────────────────────────────────────────────────
+var steps = ['s1','s2','s3','s4','s5','s6'];
+
+function activateStep(i) {
+  if (i > 0) document.getElementById(steps[i-1]).className = 'ps done';
+  document.getElementById(steps[i]).className = 'ps active';
+}
+
+function doneSteps() {
+  steps.forEach(function(id){ document.getElementById(id).className = 'ps done'; });
+  document.getElementById('spin').style.display = 'none';
+  document.getElementById('prog-lbl').textContent = 'COMPLETE';
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function statBadge(count, type, label) {
+  return '<div class="stat"><span class="stat-dot ' + type + '"></span><span class="stat-val">' + count + '</span><span class="stat-lbl">' + label + '</span></div>';
+}
+
+function setStatus(key, cls, text) {
+  var el = document.getElementById('st-' + key);
+  el.textContent = text;
+  el.className   = 'ar-status ' + cls;
+}
+
+function renderSuccess(key, data) {
+  setStatus(key, 'ok', 'DONE');
+  var bodyEl = document.getElementById('body-' + key);
+  var label  = { framework:'FRAMEWORK', health:'HEALTH', mastery:'MASTERY', strategy:'STRATEGY' }[key] || key.toUpperCase();
+
+  var html = '<a class="ar-dl" href="/walmart/download/' + encodeURIComponent(data.download_filename) + '" target="_blank">↓ &nbsp;DOWNLOAD ' + label + '</a>';
+
+  if (data.grade) {
+    html += '<div class="ar-grade">Grade: ' + data.grade;
+    if (data.score !== undefined) html += ' &nbsp;·&nbsp; Score: ' + data.score;
+    html += '</div>';
+  }
+
+  if (data.ok !== undefined || data.flag !== undefined || data.partial !== undefined) {
+    html += '<div class="ar-stats">';
+    if (data.ok      !== undefined) html += statBadge(data.ok,      'ok',      'OK');
+    if (data.flag    !== undefined) html += statBadge(data.flag,    'flag',    'FLAG');
+    if (data.partial !== undefined) html += statBadge(data.partial, 'partial', 'PARTIAL');
+    html += '</div>';
+  }
+
+  bodyEl.innerHTML = html;
+}
+
+function renderError(key, msg) {
+  setStatus(key, 'error', 'ERROR');
+  document.getElementById('body-' + key).innerHTML = '<div class="ar-error">⚠ ' + msg + '</div>';
+}
+
+// ── Post one agent ────────────────────────────────────────────────────────────
+function postAgent(endpoint, key) {
+  setStatus(key, 'running', 'RUNNING');
+  var fd = new FormData();
+  fd.append('file', file);
+  return fetch(endpoint, { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.error) renderError(key, data.error);
+      else            renderSuccess(key, data);
+    })
+    .catch(function(e){ renderError(key, e.message || 'Network error'); });
+}
+
+// ── Run all 4 sequentially ────────────────────────────────────────────────────
+runB.addEventListener('click', async function() {
+  if (!file) return;
+  runB.disabled = true;
+  errEl.style.display = 'none';
+  reset.style.display = 'none';
+
+  // Show results panel with PENDING state
+  ['framework','health','mastery','strategy'].forEach(function(k){
+    setStatus(k, 'pending', 'PENDING');
+    document.getElementById('body-' + k).innerHTML = '';
   });
+  res.style.display  = 'block';
+  prog.style.display = 'block';
+  document.getElementById('spin').style.display = '';
+  document.getElementById('prog-lbl').textContent = 'PROCESSING — RUNNING WALMART AGENTS';
 
-  function setFile(f) {
-    if (!f) return;
-    selectedFile = f;
-    fileLabel.textContent = '📎 ' + f.name;
-    runBtn.disabled = false;
-  }
+  // Step 1 — reading file
+  activateStep(0);
 
-  function gradeColour(grade) {
-    const g = (grade || '').toLowerCase();
-    if (g.includes('compliant') || g.includes('healthy'))  return 'g-green';
-    if (g.includes('attention') || g.includes('improvement')) return 'g-amber';
-    if (g.includes('risk') || g.includes('non-compliant') || g.includes('not compliant')) return 'g-red';
-    return 'g-grey';
-  }
+  // Step 2 — Framework
+  activateStep(1);
+  await postAgent('/walmart/analyze/framework', 'framework');
 
-  const PILLAR_ORDER  = ['mastery', 'framework', 'health', 'strategy'];
-  const PILLAR_LABELS = { mastery: 'Mastery', framework: 'Framework', health: 'Health', strategy: 'Strategy' };
+  // Step 3 — Health
+  activateStep(2);
+  await postAgent('/walmart/analyze/health', 'health');
 
-  async function runAnalysis() {
-    if (!selectedFile) return;
+  // Step 4 — Mastery
+  activateStep(3);
+  await postAgent('/walmart/analyze/mastery', 'mastery');
 
-    runBtn.disabled = true;
-    document.getElementById('status').style.display  = 'block';
-    document.getElementById('results').style.display = 'none';
+  // Step 5 — Strategy
+  activateStep(4);
+  await postAgent('/walmart/analyze/strategy', 'strategy');
 
-    const fd = new FormData();
-    fd.append('file', selectedFile);
+  // Step 6 — Done
+  activateStep(5);
+  doneSteps();
+  reset.style.display = 'block';
+  res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
-    try {
-      const resp = await fetch('/walmart/analyze', { method: 'POST', body: fd });
-      const data = await resp.json();
-
-      document.getElementById('status').style.display  = 'none';
-      document.getElementById('results').style.display = 'block';
-      document.getElementById('account-title').textContent =
-        (data.account && data.account !== 'UNKNOWN_ACCOUNT')
-          ? data.account + ' — Walmart CoE Results'
-          : 'Walmart CoE Results';
-
-      // ── Pillar cards ──────────────────────────────────────────────
-      const grid = document.getElementById('pillars-grid');
-      grid.innerHTML = '';
-
-      for (const key of PILLAR_ORDER) {
-        const p  = (data.pillars || {})[key];
-        const gc = p ? gradeColour(p.grade) : 'g-grey';
-        const grade = p ? p.grade    : '—';
-        const score = p ? p.score    : '—';
-        const ok    = p ? p.ok      : '—';
-        const flag  = p ? p.flag    : '—';
-        const part  = p ? p.partial : '—';
-
-        grid.innerHTML += `
-          <div class="pillar-card ${gc}">
-            <div class="p-label">${PILLAR_LABELS[key]}</div>
-            <div class="p-grade">${grade}</div>
-            <div class="p-score">Score: ${score}</div>
-            <div class="p-counts">
-              <span class="fc">▲ ${flag} FLAG</span>
-              <span class="pc">◑ ${part} PARTIAL</span>
-              <span class="oc">✓ ${ok} OK</span>
-            </div>
-          </div>`;
-      }
-
-      // ── Download links ────────────────────────────────────────────
-      const dlSection = document.getElementById('dl-section');
-      const dlLinks   = document.getElementById('dl-links');
-      dlLinks.innerHTML = '';
-      let hasFiles = false;
-
-      for (const key of PILLAR_ORDER) {
-        const p = (data.pillars || {})[key];
-        if (p && p.filename) {
-          hasFiles = true;
-          const enc = encodeURIComponent(p.filename);
-          dlLinks.innerHTML += `
-            <a class="dl-btn" href="/walmart/download/${enc}" download>
-              <span class="dl-icon">⬇</span> ${p.filename}
-            </a>`;
-        }
-      }
-      dlSection.style.display = hasFiles ? 'block' : 'none';
-
-      // ── Errors ────────────────────────────────────────────────────
-      const errSection = document.getElementById('error-section');
-      errSection.innerHTML = '';
-      const errs = data.errors || {};
-      if (Object.keys(errs).length > 0) {
-        const msgs = Object.entries(errs)
-          .map(([k, v]) => `<b>${k}:</b> ${v.slice(0, 300)}`)
-          .join('\n\n');
-        errSection.innerHTML = `<div class="error-box">${msgs}</div>`;
-      }
-
-    } catch (err) {
-      document.getElementById('status').style.display  = 'none';
-      document.getElementById('results').style.display = 'block';
-      document.getElementById('error-section').innerHTML =
-        `<div class="error-box">Request failed: ${err.message}</div>`;
-    } finally {
-      runBtn.disabled = false;
-    }
-  }
+reset.addEventListener('click', function() {
+  file = null; fi.value = '';
+  pill.classList.remove('show');
+  runB.disabled       = true;
+  prog.style.display  = 'none';
+  errEl.style.display = 'none';
+  res.style.display   = 'none';
+  reset.style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 </script>
 </body>
 </html>
