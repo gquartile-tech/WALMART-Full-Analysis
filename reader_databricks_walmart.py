@@ -220,50 +220,64 @@ def _latest_row(df: pd.DataFrame) -> pd.Series:
 
 def _parse_walmart_header(wb) -> dict:
     """
-    Walmart exports store identity in a named Analysis sheet, not 01_Advertiser_Name.
-    Try all three pillar Analysis sheets.
+    Walmart Databricks exports use 01_Advertiser_Name — same structure as Amazon:
+      Row 1: "{AccountName} - Advertiser_Name"
+      Row 2: "Account: {name} | Tenant ID: {tid} | Advertiser ID: {aid}"
+      Row 3: "Date Range: YYYY-MM-DD to YYYY-MM-DD"
+      Row 4: "Downloaded: YYYY-MM-DD HH:MM:SS"
     """
-    candidates = [
-        'Account Mastery_Analysis',
-        'Framework_Analysis',
-        'Account Health_Analysis',
-        'Account Strategy _Analysis',
-    ]
-    ws = None
-    for name in candidates:
-        if name in wb.sheetnames:
-            ws = wb[name]
-            break
-
+    ws = next((wb[n] for n in wb.sheetnames if n.startswith('01_')), None)
     if ws is None:
-        raise ValueError('No recognized Walmart Analysis sheet found in export.')
+        raise ValueError(
+            'Sheet 01_Advertiser_Name not found in export. '
+            f'Available sheets: {wb.sheetnames[:8]}'
+        )
 
-    rows = list(ws.iter_rows(min_row=1, max_row=6, values_only=True))
+    rows = list(ws.iter_rows(min_row=1, max_row=8, values_only=True))
 
-    # Row 3 (index 2): Account line
-    account_line = clean_text(rows[2][1]) if len(rows) > 2 and rows[2][1] else ''
-    m_id = re.search(r'Tenant ID:\s*(.*?)\s*\|\s*Account ID:\s*(\S+)', account_line)
+    # Row 1 — account name (strip " - Advertiser_Name" suffix)
+    title_line = clean_text(rows[0][0]) if rows else ''
+    hash_name  = re.sub(r'\s*-\s*Advertiser[_\s]*Name\s*$', '', title_line, flags=re.I).strip()
+
+    # Row 2 — Tenant ID + Advertiser ID
+    account_line = clean_text(rows[1][0]) if len(rows) > 1 else ''
+    m_id = re.search(
+        r'Tenant ID:\s*([\w\-]+)\s*\|\s*(?:Account|Advertiser) ID:\s*(\S+)',
+        account_line
+    )
     tenant_id  = m_id.group(1).strip() if m_id else ''
     account_id = m_id.group(2).strip() if m_id else ''
 
-    # Hash name from row 1 (title)
-    title_line = clean_text(rows[0][0]) if rows else ''
-    hash_name = re.sub(r'\s*—.*$', '', title_line).strip()
-
-    # Row 4 (index 3): Evaluation Window
-    window_line = clean_text(rows[3][1]) if len(rows) > 3 and rows[3][1] else ''
-    m_win = re.search(r'(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', window_line)
+    # Row 3 — Date range
+    range_line = clean_text(rows[2][0]) if len(rows) > 2 else ''
+    m_win = re.search(r'(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', range_line)
     start = datetime.strptime(m_win.group(1), '%Y-%m-%d').date() if m_win else None
     end   = datetime.strptime(m_win.group(2), '%Y-%m-%d').date() if m_win else None
 
-    # Row 5 (index 4): Download Date
-    dl = rows[4][1] if len(rows) > 4 else None
-    downloaded = dl if isinstance(dl, datetime) else None
+    # Row 4 — Download datetime
+    dl_line    = clean_text(rows[3][0]) if len(rows) > 3 else ''
+    dl_str     = re.sub(r'^Downloaded:\s*', '', dl_line, flags=re.I).strip()
+    downloaded = None
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            downloaded = datetime.strptime(dl_str, fmt)
+            break
+        except ValueError:
+            pass
+
+    # Fallback: row 6/7 have structured data (TenantId, AdvertiserId cols)
+    if not tenant_id or not account_id:
+        for row in rows[5:]:
+            vals = [clean_text(v) for v in row if v is not None]
+            if len(vals) >= 2 and re.match(r'[0-9a-f\-]{30,}', vals[0]):
+                tenant_id  = tenant_id  or vals[0]
+                account_id = account_id or vals[1]
+                break
 
     return {
-        'hash_name':   hash_name,
-        'tenant_id':   tenant_id,
-        'account_id':  account_id,
+        'hash_name':    hash_name,
+        'tenant_id':    tenant_id,
+        'account_id':   account_id,
         'window_start': start,
         'window_end':   end,
         'downloaded':   downloaded,
