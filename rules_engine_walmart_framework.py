@@ -323,7 +323,6 @@ def evaluate_all(ctx: WalmartContext) -> Dict[str, ControlResult]:
         if create_col is None or cat_id_col is None or item_id_col is None:
             r['WM-F013'] = ControlResult(STATUS_PARTIAL, 'Creation date or item ID columns missing. Cannot assess onboarding velocity.', WHY['WM-F013'], SOURCES['WM-F013'])
         else:
-            import pandas as pd
             try:
                 catalog2 = catalog.copy()
                 catalog2['_created'] = pd.to_datetime(catalog2[create_col], errors='coerce')
